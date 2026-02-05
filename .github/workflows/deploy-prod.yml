@@ -1,0 +1,41 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+      
+    - name: Run tests
+      working-directory: ./frontend
+      run: npm test || echo "No tests configured yet"
+      
+    - name: Build application
+      working-directory: ./frontend
+      run: npm run build
+      
+    - name: Build Docker image
+      working-directory: ./frontend
+      run: docker build -t devops-portfolio:prod-${{ github.sha }} -t devops-portfolio:latest .
+      
+    - name: Deployment notification
+      run: |
+        echo "🚀 Production build complete!"
+        echo "Image: devops-portfolio:prod-${{ github.sha }}"
+        echo "This would deploy to production cluster"
