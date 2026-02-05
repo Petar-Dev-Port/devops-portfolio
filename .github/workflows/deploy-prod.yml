@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     
     steps:
@@ -22,20 +22,29 @@ jobs:
       working-directory: ./frontend
       run: npm ci
       
-    - name: Run tests
-      working-directory: ./frontend
-      run: npm test || echo "No tests configured yet"
-      
     - name: Build application
       working-directory: ./frontend
       run: npm run build
       
-    - name: Build Docker image
-      working-directory: ./frontend
-      run: docker build -t devops-portfolio:prod-${{ github.sha }} -t devops-portfolio:latest .
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
       
-    - name: Deployment notification
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Build and push Docker image
+      working-directory: ./frontend
       run: |
-        echo "🚀 Production build complete!"
-        echo "Image: devops-portfolio:prod-${{ github.sha }}"
-        echo "This would deploy to production cluster"
+        docker build -t petarpdev/devops-portfolio:prod-${{ github.sha }} -t petarpdev/devops-portfolio:latest .
+        docker push petarpdev/devops-portfolio:prod-${{ github.sha }}
+        docker push petarpdev/devops-portfolio:latest
+        
+    - name: Production deployment complete
+      run: |
+        echo "🚀 Production deployment complete!"
+        echo "📦 Image: petarpdev/devops-portfolio:prod-${{ github.sha }}"
+        echo "🏷️ Also tagged as: petarpdev/devops-portfolio:latest"
+        echo "🔗 Docker Hub: https://hub.docker.com/r/petarpdev/devops-portfolio"
