@@ -1,0 +1,104 @@
+.App {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.header {
+  text-align: center;
+  padding: 3rem 0;
+  border-bottom: 2px solid #646cff;
+  margin-bottom: 3rem;
+}
+
+.header h1 {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #646cff 0%, #42d392 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header p {
+  font-size: 1.3rem;
+  color: #888;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.section {
+  background: #1a1a1a;
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #333;
+}
+
+.section h2 {
+  color: #646cff;
+  margin-bottom: 1rem;
+  font-size: 2rem;
+}
+
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.tech-item {
+  background: #242424;
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1.2rem;
+  border: 1px solid #333;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.tech-item:hover {
+  transform: translateY(-5px);
+  border-color: #646cff;
+}
+
+.section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.section li {
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.section li:before {
+  content: "▸";
+  position: absolute;
+  left: 0;
+  color: #646cff;
+}
+
+.section a {
+  color: #646cff;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.section a:hover {
+  color: #42d392;
+}
+
+.footer {
+  text-align: center;
+  padding: 2rem 0;
+  margin-top: 3rem;
+  border-top: 2px solid #333;
+  color: #888;
+}
