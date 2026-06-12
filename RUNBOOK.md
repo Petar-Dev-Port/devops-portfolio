@@ -17,9 +17,13 @@ cd ~/devops-portfolio
 kubectl get pods
 ```
 
-Then open <http://localhost:30080> in the Windows browser.
 
-If `kubectl get pods` is empty after a restart, re-apply the manifests:
+Then open:
+- Dev  → http://localhost:30080
+- Prod → http://localhost:30081
+
+No `apply` or `create` needed day to day — the cluster remembers everything.
+Only `kubectl apply -f ...` after you change a manifest:
 
 ```bash
 kubectl apply -f infrastructure/kubernetes/dev/
@@ -33,10 +37,16 @@ Wait for `Running`, press `Ctrl+C`, open the browser.
 
 ```bash
 k3d cluster stop portfolio
-sudo service docker stop
 ```
 
-Stopping the cluster frees resources without deleting it, so next time use `start`, not `create`.
+Optionally also `sudo service docker stop` to free resources.
+(A "triggering units still active: docker.socket" message is normal, not an error.)
+
+## When to use what
+
+- **Editing code, quick look** → `npm run dev` (no cluster needed)
+- **Verify the deployed container / screenshot dev+prod** → start the cluster
+- **Pulled a new image after a merge** → `kubectl rollout restart deployment portfolio-dev` (or `-prod`)
 
 ---
 
