@@ -1,0 +1,11 @@
+# Non-secret config.
+database:
+   host: localhost
+    port: 5432
+    name: mydb
+    user: monitor_user
+    connect_timeout: 5
+
+monitoring:
+    # Alert when active connections reach this fraction of max_connections
+    alert_threshold: 0.80
