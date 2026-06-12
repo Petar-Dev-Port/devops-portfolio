@@ -23,6 +23,7 @@ If `kubectl get pods` is empty after a restart, re-apply the manifests:
 
 ```bash
 kubectl apply -f infrastructure/kubernetes/dev/
+kubectl apply -f infrastructure/kubernetes/prod/
 kubectl get pods -w
 ```
 
@@ -79,7 +80,9 @@ Close and reopen the Ubuntu terminal so the docker group applies.
 
 ```bash
 sudo service docker start
-k3d cluster create portfolio --port "30080:30080@loadbalancer"
+k3d cluster create portfolio \
+  --port "30080:30080@loadbalancer" \
+  --port "30081:30081@loadbalancer"
 ```
 
 ### 4. Get the code
@@ -97,6 +100,7 @@ git checkout dev
 
 ```bash
 kubectl apply -f infrastructure/kubernetes/dev/
+kubectl apply -f infrastructure/kubernetes/prod/
 kubectl get pods -w
 ```
 
