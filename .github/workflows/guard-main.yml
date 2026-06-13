@@ -1,0 +1,23 @@
+name: Guard main merges
+on:
+  pull_request:
+    branches:
+      - main
+permissions:
+  pull-requests: write
+jobs:
+  enforce-dev-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block PRs into main that are not from dev
+        if: github.head_ref != 'dev'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr close ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --comment "Blocked: PRs into \`main\` must come from \`dev\`. This one is from \`${{ github.head_ref }}\`. Merge into dev first, then PR dev into main."
+          exit 1
+      - name: Source is dev, allowed
+        if: github.head_ref == 'dev'
+        run: echo "PR is from dev. Allowed."
