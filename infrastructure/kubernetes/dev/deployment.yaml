@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: portfolio
-        image: petarpdev/devops-portfolio:dev-e2de3c876f282846f6fad1884f5d139c51349f7c
+        image: petarpdev/devops-portfolio:dev-ded4eb2cb646f0a11d93883ec7de16f1c48b18ff
         imagePullPolicy: Always
         ports:
         - containerPort: 80
