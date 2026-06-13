@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portfolio-prod-ingress
+  namespace: default
+  labels:
+    app: portfolio
+    env: prod
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: prod.localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: portfolio-prod-service
+            port:
+              number: 80
