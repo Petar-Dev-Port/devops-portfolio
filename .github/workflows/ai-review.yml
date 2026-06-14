@@ -1,0 +1,75 @@
+name: AI PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - dev
+      - main
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  gemini-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Limit to ~12000 lines so we never blow past the model's input budget
+          git diff "$BASE_SHA" "$HEAD_SHA" -- . ':(exclude)package-lock.json' ':(exclude)*.lock' > full.diff || true
+          head -c 60000 full.diff > pr.diff
+          if [ ! -s pr.diff ]; then
+            echo "empty=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "empty=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Review with Gemini
+        if: steps.diff.outputs.empty == 'false'
+        id: gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # Build the request body safely with jq (handles quotes/newlines in the diff)
+          PROMPT="You are a senior DevOps engineer reviewing a pull request diff. Be concise. Point out real bugs, security issues, secrets, or bad practices with the file and a short fix. Ignore trivia. If the change is solid, reply with a short 'LGTM' and one line on why. Here is the diff:"
+          jq -n --arg p "$PROMPT" --rawfile d pr.diff \
+            '{contents:[{parts:[{text:($p + "\n\n" + $d)}]}]}' > body.json
+
+          HTTP=$(curl -s -w "%{http_code}" -o resp.json \
+            -X POST \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent" \
+            -H "Content-Type: application/json" \
+            -H "x-goog-api-key: $GEMINI_API_KEY" \
+            -d @body.json)
+
+          if [ "$HTTP" != "200" ]; then
+            echo "review<<EOF" >> "$GITHUB_OUTPUT"
+            echo "Gemini review skipped (API returned HTTP $HTTP). This does not block the PR." >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          else
+            TEXT=$(jq -r '.candidates[0].content.parts[0].text // "No review text returned."' resp.json)
+            echo "review<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$TEXT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post review comment
+        if: steps.diff.outputs.empty == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > comment.md <<'HEADER'
+          ## 🤖 Gemini review
+          HEADER
+          printf '%s\n' "${{ steps.gemini.outputs.review }}" >> comment.md
+          echo "" >> comment.md
+          echo "_Automated review by gemini-2.5-flash. Advisory only, not a merge gate._" >> comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --body-file comment.md
