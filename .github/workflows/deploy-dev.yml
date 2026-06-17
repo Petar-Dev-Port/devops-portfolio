@@ -34,11 +34,11 @@ jobs:
         docker build -t petarpdev/devops-portfolio:dev-${{ github.sha }} -t petarpdev/devops-portfolio:dev-latest .
         docker push petarpdev/devops-portfolio:dev-${{ github.sha }}
         docker push petarpdev/devops-portfolio:dev-latest
-    - name: Update manifest with new image tag (GitOps commit-back)
+    - name: Update image tag (GitOps commit-back)
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        sed -i "s|image: petarpdev/devops-portfolio:.*|image: petarpdev/devops-portfolio:dev-${{ github.sha }}|" infrastructure/kubernetes/dev/deployment.yaml
-        git add infrastructure/kubernetes/dev/deployment.yaml
+        sed -i "s|newTag: .*|newTag: dev-${{ github.sha }}|" infrastructure/kubernetes/dev/kustomization.yaml
+        git add infrastructure/kubernetes/dev/kustomization.yaml
         git commit -m "ci: set dev image to dev-${{ github.sha }} [skip ci]" || echo "No change to commit"
         git push origin HEAD:dev
