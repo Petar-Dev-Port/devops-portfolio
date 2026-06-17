@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+
+images:
+  - name: petarpdev/devops-portfolio
+    newTag: dev-eb4932aebe6c04011262e549be4d69f0849fec32
