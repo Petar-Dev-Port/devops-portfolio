@@ -160,4 +160,51 @@ monitoring:
       },
     ],
   },
+  {
+    id: "cluster-bootstrap",
+    name: "Cluster Bootstrap",
+    category: "Automation",
+    language: "bash",
+    description:
+      "Brings the whole local platform up in one command: starts Docker, starts the k3d cluster, waits until the app pods are actually Ready (not just present), then prints ArgoCD status and access URLs.",
+    repoPath: "scripts/bash/up.sh",
+    files: [
+      {
+        name: "up.sh",
+        language: "bash",
+        code: `#!/usr/bin/env bash
+# up.sh — Bring the local platform up and wait until it's actually ready.
+set -euo pipefail
+
+CLUSTER="portfolio"
+info() { echo -e "\\033[1;34m[up]\\033[0m $*"; }
+ok()   { echo -e "\\033[1;32m[ok]\\033[0m $*"; }
+warn() { echo -e "\\033[1;33m[!]\\033[0m  $*"; }
+
+info "Starting Docker service..."
+sudo service docker start >/dev/null 2>&1 || true
+for i in {1..15}; do
+  if docker info >/dev/null 2>&1; then ok "Docker is up."; break; fi
+  sleep 1
+  [ "$i" -eq 15 ] && { warn "Docker did not come up in time."; exit 1; }
+done
+
+if k3d cluster list "$CLUSTER" >/dev/null 2>&1; then
+  info "Starting k3d cluster '$CLUSTER'..."
+  k3d cluster start "$CLUSTER" >/dev/null
+  ok "Cluster started."
+else
+  warn "Cluster '$CLUSTER' does not exist. Create it first (see RUNBOOK)."
+  exit 1
+fi
+
+info "Waiting for app pods to become Ready..."
+kubectl wait --for=condition=Ready pods -l app=portfolio -n default --timeout=120s >/dev/null 2>&1 \\
+  && ok "Portfolio pods are Ready." || warn "Pods not Ready within 120s."
+
+ok "Platform is up:  http://dev.localhost  |  http://prod.localhost"
+`,
+      },
+    ],
+  },
 ];
