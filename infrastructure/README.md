@@ -2,7 +2,7 @@
 
 ## Local Development Environment
 
-### COmponents
+### Components
 
 - Kubernetes: K3s V1.34.3 single-node cluster
 -Container RUntime" Docker 29.1.3
@@ -13,7 +13,7 @@
 -K3s cluster running
 -kubectl configured
 
-## CLuster INfo
+## Cluster INfo
 ```bash
 kubectl get nodes
 # SHows single control-plane node in Ready state
