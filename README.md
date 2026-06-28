@@ -93,9 +93,14 @@ See [RUNBOOK.md](./RUNBOOK.md) for full setup and daily operation. The short ver
 
 ---
 
+## Infrastructure as Code
+
+The `infrastructure/terraform/` directory defines a production-grade AWS EKS platform as code: a VPC across two Availability Zones (public + private subnets, NAT gateway), least-privilege IAM roles, an EKS cluster, and an autoscaling managed node group in the private subnets. It is validate-only (defined and `terraform validate`-clean, provisionable on demand), the live site runs on local k3d, so no AWS resources are billed.
+
+---
+
 ## Roadmap
 
-- Terraform configuration as a validate-only IaC showcase (provisionable on demand)
 - Trivy image scanning in CI
 - Helm chart authoring for the app
 - Optional always-on hosting

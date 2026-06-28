@@ -421,13 +421,20 @@ Cluster isn't running: `k3d cluster start portfolio`.
 
 ---
 
+## Infrastructure as Code (Terraform)
+
+`infrastructure/terraform/` , validate-only AWS EKS config (VPC, IAM, EKS, node group).
+Validate it with: `cd infrastructure/terraform && terraform init && terraform validate`.
+Never applied; provisionable on demand.
+
+---
+
 ## Backlog
 
 - Switch services to ClusterIP (NodePorts are redundant with Ingress; note the
   tunnel currently relies on the prod NodePort, adjust together)
 - `scripts.js` `?raw` refactor (import real script files instead of inline strings)
 - Remove default Vite asset cruft (`frontend/src/assets/react.svg`)
-- Terraform configuration as a validate-only IaC showcase
 - Trivy image scanning in CI
 - Helm chart authoring for the app
 - ArgoCD webhook for instant sync (needs a stable public endpoint)
