@@ -99,9 +99,3 @@ See [RUNBOOK.md](./RUNBOOK.md) for full setup and daily operation. The short ver
 - Trivy image scanning in CI
 - Helm chart authoring for the app
 - Optional always-on hosting
-
----
-
-## About me
-
-> _DevOps engineer focused on Kubernetes, GitOps, and automation. I learn by building real, working systems , this repo is one of them._
