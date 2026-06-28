@@ -36,6 +36,7 @@ flowchart LR
 | Manifests | Kustomize |
 | Containers | Docker, Docker Hub |
 | CI/CD | GitHub Actions |
+| IaC | Terraform (AWS EKS, validate-only) |
 | Ingress | Traefik |
 | Monitoring | Prometheus + Grafana (kube-prometheus-stack) |
 | AI review | Gemini API |
@@ -48,8 +49,8 @@ flowchart LR
 
 Two environments running side by side, promoted through Git:
 
-- **dev** (staging) , `dev` branch → `http://dev.localhost`
-- **prod** (production) , `main` branch → `http://prod.localhost`
+- **dev** (staging): `dev` branch, http://dev.localhost
+- **prod** (production): `main` branch, http://prod.localhost
 
 A branch guard ensures only `dev` can be merged into `main`, so production is always promoted from tested staging code.
 
@@ -57,14 +58,15 @@ A branch guard ensures only `dev` can be merged into `main`, so production is al
 
 ## Highlights
 
-- **GitOps end to end** , Git is the single source of truth; ArgoCD auto-syncs the cluster with no manual `kubectl apply`.
-- **Two-environment promotion** , feature → dev → main, with an automated guard protecting `main`.
-- **Kustomize-managed image tags** , the deploy manifest is static; the image tag lives in `kustomization.yaml`, which eliminated a recurring merge-conflict problem.
-- **Declarative monitoring** , the full Prometheus + Grafana stack is deployed through ArgoCD from a single Application manifest.
-- **AI PR reviewer** , a GitHub Action sends each PR diff to the Gemini API and posts an advisory review comment (non-blocking, with fork-safety).
-- **Issue → board automation** , new issues are auto-added to a GitHub Projects board with a clean label taxonomy.
-- **One-command bootstrap** , `scripts/bash/up.sh` starts Docker and the cluster, waits until pods are actually ready, and prints access URLs.
-- **Scripts showcase** , the site renders real automation scripts from a single source-of-truth file.
+- **GitOps end to end:** Git is the single source of truth; ArgoCD auto-syncs the cluster with no manual `kubectl apply`.
+- **Two-environment promotion:** feature to dev to main, with an automated guard protecting `main`.
+- **Kustomize-managed image tags:** the deploy manifest is static; the image tag lives in `kustomization.yaml`, which eliminated a recurring merge-conflict problem.
+- **Infrastructure as code:** a full AWS EKS platform (VPC, IAM, cluster, node group) defined in Terraform and validated, provisionable on demand.
+- **Declarative monitoring:** the full Prometheus + Grafana stack is deployed through ArgoCD from a single Application manifest.
+- **AI PR reviewer:** a GitHub Action sends each PR diff to the Gemini API and posts an advisory review comment (non-blocking, with fork-safety).
+- **Issue to board automation:** new issues are auto-added to a GitHub Projects board with a clean label taxonomy.
+- **One-command bootstrap:** `scripts/bash/up.sh` starts Docker and the cluster, waits until pods are actually ready, and prints access URLs.
+- **Scripts showcase:** the site renders real automation scripts from a single source-of-truth file.
 
 ---
 
@@ -77,6 +79,7 @@ infrastructure/
   kubernetes/dev/    dev manifests (Kustomize base)
   kubernetes/prod/   prod manifests (Kustomize base)
   argocd/            ArgoCD Application manifests (dev, prod, monitoring)
+  terraform/         AWS EKS infrastructure as code (validate-only)
 scripts/             showcased automation scripts (bash, python)
 RUNBOOK.md           how to run and operate the platform
 ```
@@ -95,7 +98,7 @@ See [RUNBOOK.md](./RUNBOOK.md) for full setup and daily operation. The short ver
 
 ## Infrastructure as Code
 
-The `infrastructure/terraform/` directory defines a production-grade AWS EKS platform as code: a VPC across two Availability Zones (public + private subnets, NAT gateway), least-privilege IAM roles, an EKS cluster, and an autoscaling managed node group in the private subnets. It is validate-only (defined and `terraform validate`-clean, provisionable on demand), the live site runs on local k3d, so no AWS resources are billed.
+The `infrastructure/terraform/` directory defines a production-grade AWS EKS platform as code: a VPC across two Availability Zones (public and private subnets, NAT gateway), least-privilege IAM roles, an EKS cluster, and an autoscaling managed node group in the private subnets. It is validate-only (defined and `terraform validate`-clean, provisionable on demand). The live site runs on local k3d, so no AWS resources are billed.
 
 ---
 

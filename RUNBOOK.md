@@ -1,4 +1,4 @@
-# RUNBOOK , devops-portfolio
+# RUNBOOK: devops-portfolio
 
 Operational guide for running the portfolio locally on Windows
 (WSL2 + Docker + k3d + Kubernetes + ArgoCD + Traefik Ingress).
@@ -17,14 +17,14 @@ k3d) routes clean hostnames to each environment. Git is the source of truth, and
 deploys happen on their own after a merge.
 
 Access:
-- Dev  -> http://dev.localhost  (also http://localhost:30080)
-- Prod -> http://prod.localhost (also http://localhost:30081)
+- Dev: http://dev.localhost  (also http://localhost:30080)
+- Prod: http://prod.localhost (also http://localhost:30081)
 
 ---
 
 ## Daily startup (machine already set up)
 
-The fast way , one command does Docker + cluster + readiness check + status:
+The fast way (one command does Docker + cluster + readiness check + status):
 
 ```bash
 cd ~/devops-portfolio
@@ -81,20 +81,20 @@ Notes:
 - Points at the **NodePort** (`:30081`), not the ingress, because the ingress
   routes by hostname (`prod.localhost`) and the tunnel sends a different Host
   header. The NodePort goes straight to the prod service, so no host-matching.
-- The URL is random and changes each run, this is for on-demand demos, not a
-  permanent link. A stable URL would need a Cloudflare account + a domain.
+- The URL is random and changes each run. This is for on-demand demos, not a
+  permanent link. A stable URL would need a Cloudflare account plus a domain.
 - Only ever tunnel the public static site. **Never** tunnel admin tools such as
   the ArgoCD UI or Grafana (default credentials would be exposed publicly).
-- When the tunnel is off, nothing is exposed, no background service, no open port.
+- When the tunnel is off, nothing is exposed: no background service, no open port.
 
 ---
 
 ## When to use what
 
-- **Editing code, quick look** -> `npm run dev` from `frontend/` (no cluster needed)
-- **Verify the deployed container** -> start the cluster, open the `.localhost` URLs
-- **Show it to someone** -> start the cluster, run the Cloudflare Tunnel above
-- **Ship a change** -> merge through the Git flow below. Deploys are automatic.
+- **Editing code, quick look:** `npm run dev` from `frontend/` (no cluster needed)
+- **Verify the deployed container:** start the cluster, open the `.localhost` URLs
+- **Show it to someone:** start the cluster, run the Cloudflare Tunnel above
+- **Ship a change:** merge through the Git flow below. Deploys are automatic.
 
 ---
 
@@ -112,7 +112,7 @@ git push -u origin feature/my-change
 
 Then on GitHub:
 1. PR `feature/my-change` -> `dev`. The AI reviewer comments on it. Merge it. The
-   dev pipeline builds + commits the tag into `dev/kustomization.yaml`. ArgoCD
+   dev pipeline builds and commits the tag into `dev/kustomization.yaml`. ArgoCD
    syncs `portfolio-dev`.
 2. Test at http://dev.localhost.
 3. PR `dev` -> `main`, merge. Prod pipeline does the same into
@@ -137,7 +137,7 @@ Notes:
 ## Image tags live in Kustomize (why there are no more merge conflicts)
 
 The deployment manifests (`infrastructure/kubernetes/{dev,prod}/deployment.yaml`)
-are **static**, the image is referenced as `petarpdev/devops-portfolio` with no
+are **static**: the image is referenced as `petarpdev/devops-portfolio` with no
 tag. The tag is set in each environment's `kustomization.yaml`:
 
 ```yaml
@@ -161,17 +161,39 @@ kubectl kustomize infrastructure/kubernetes/prod | grep image:
 
 ---
 
+## Infrastructure as Code (Terraform)
+
+`infrastructure/terraform/` contains a validate-only AWS EKS configuration: a VPC
+across two Availability Zones (public and private subnets, NAT gateway),
+least-privilege IAM roles for the control plane and worker nodes, an EKS cluster,
+and an autoscaling managed node group in the private subnets.
+
+Validate it (no AWS account or cost required):
+
+```bash
+cd infrastructure/terraform
+terraform init
+terraform validate
+```
+
+It is never applied. To provision for real (incurs cost): set AWS credentials,
+`cp terraform.tfvars.example terraform.tfvars`, then `terraform plan` / `apply`,
+and `terraform destroy` to tear it down. The `.terraform.lock.hcl` is committed
+(pins the provider version); state and real `terraform.tfvars` are gitignored.
+
+---
+
 ## AI PR reviewer
 
 `.github/workflows/ai-review.yml` runs on every PR (opened / new commits) into
 `dev` and `main`. It sends the PR diff to the Gemini API (`gemini-2.5-flash`,
 free tier) and posts the review as a PR comment. It is **advisory and
-non-blocking**, it never gates a merge. A fork-safety condition makes the job run
+non-blocking**; it never gates a merge. A fork-safety condition makes the job run
 only for same-repo PRs (secrets are not available to forks). Findings are
 sometimes context-blind false positives (the model only sees the diff), so treat
 them as a second opinion, not gospel.
 
-- Secret: `GEMINI_API_KEY` (free tier, no billing account , cannot be charged).
+- Secret: `GEMINI_API_KEY` (free tier, no billing account, cannot be charged).
 - If the API returns a transient error (e.g. HTTP 503), the workflow soft-fails
   and posts an informational note instead of breaking the run.
 
@@ -291,6 +313,11 @@ curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 # Helm (for inspecting the monitoring chart; ArgoCD manages it)
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
+# Terraform (for the validate-only IaC showcase)
+wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install -y terraform
+
 # cloudflared (for live demo tunnels)
 curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
 sudo dpkg -i /tmp/cloudflared.deb
@@ -298,7 +325,7 @@ sudo dpkg -i /tmp/cloudflared.deb
 
 Reopen the terminal so the docker group applies.
 
-### 3. Create the cluster (once) , note port 80 for Ingress
+### 3. Create the cluster (once), note port 80 for Ingress
 
 ```bash
 sudo service docker start
@@ -363,7 +390,7 @@ means port 80 isn't mapped.
 
 **ArgoCD app `OutOfSync`**
 Hit REFRESH on the app card. Auto-sync (`selfHeal`, `prune`) usually corrects it.
-After a cold start, `monitoring` may show `Progressing` briefly, give it a minute.
+After a cold start, `monitoring` may show `Progressing` briefly; give it a minute.
 
 **Merged but new image isn't running**
 ArgoCD polls every ~3 min; REFRESH to force. Verify the live pod:
@@ -377,6 +404,10 @@ the next push. A `400/403` would indicate a key/model issue.
 Confirm the cluster is up and `curl -I http://localhost:30081` returns 200 before
 starting the tunnel.
 
+**Terraform `validate` fails after editing**
+Run `terraform fmt` then re-read the error; it names the exact file and line.
+A duplicate-resource error means the same `resource "type" "name"` exists twice.
+
 **Pipeline push rejected: "without `workflow` scope"**
 The GitHub token needs the `workflow` scope for `.github/workflows/` changes.
 
@@ -384,7 +415,7 @@ The GitHub token needs the `workflow` scope for `.github/workflows/` changes.
 That's the guard working: the PR wasn't from `dev`. Merge into `dev` first.
 
 **Recurring conflict on a deployment manifest**
-Should no longer happen, image tags live in `kustomization.yaml` now. If a
+Should no longer happen; image tags live in `kustomization.yaml` now. If a
 conflict appears there, take the incoming side; the next pipeline run rewrites it.
 
 **`ImagePullBackOff`**
@@ -413,19 +444,12 @@ Cluster isn't running: `k3d cluster start portfolio`.
 | ArgoCD apps | `infrastructure/argocd/{dev,prod,monitoring}-app.yaml` |
 | ArgoCD UI | port-forward `svc/argocd-server -n argocd 8080:443` -> https://localhost:8080 |
 | Monitoring | `monitoring` namespace; Grafana port-forward `svc/monitoring-grafana -n monitoring 3000:80` (admin/admin) |
+| Terraform | `infrastructure/terraform/` (AWS EKS, validate-only) |
 | AI reviewer | `.github/workflows/ai-review.yml` (Gemini, advisory) |
 | Project board | `github.com/users/Petar-Dev-Port/projects/1` |
 | Bootstrap script | `scripts/bash/up.sh` |
 | Scripts showcase | `frontend/src/scripts.js` (one entry per script) |
 | Secrets | `DOCKER_USERNAME`, `DOCKER_PASSWORD`, `GEMINI_API_KEY`, `ADD_TO_PROJECT_PAT` |
-
----
-
-## Infrastructure as Code (Terraform)
-
-`infrastructure/terraform/` , validate-only AWS EKS config (VPC, IAM, EKS, node group).
-Validate it with: `cd infrastructure/terraform && terraform init && terraform validate`.
-Never applied; provisionable on demand.
 
 ---
 
