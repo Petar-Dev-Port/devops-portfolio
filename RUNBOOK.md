@@ -55,13 +55,30 @@ https://localhost:8080, user `admin`, password:
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 ```
 
-## Daily shutdown (optional)
+## Daily shutdown
 
 ```bash
 k3d cluster stop portfolio
 ```
 
 (A "triggering units still active: docker.socket" message is normal.)
+
+To actually free the RAM, shut down the WSL VM itself from **PowerShell**:
+
+```powershell
+wsl --shutdown
+```
+
+Stopping the cluster and Docker only stops workloads *inside* the VM. The WSL2
+VM keeps running and holds its memory (visible as `Vmmem` in Task Manager) until
+`wsl --shutdown`. To cap how much it can ever claim, create
+`C:\Users\<name>\.wslconfig`:
+
+```ini
+[wsl2]
+memory=4GB
+processors=4
+```
 
 ---
 
@@ -111,9 +128,9 @@ git push -u origin feature/my-change
 ```
 
 Then on GitHub:
-1. PR `feature/my-change` -> `dev`. The AI reviewer comments on it. Merge it. The
-   dev pipeline builds and commits the tag into `dev/kustomization.yaml`. ArgoCD
-   syncs `portfolio-dev`.
+1. PR `feature/my-change` -> `dev`. The AI reviewer comments and Trivy scans the
+   image. Merge it. The dev pipeline builds and commits the tag into
+   `dev/kustomization.yaml`. ArgoCD syncs `portfolio-dev`.
 2. Test at http://dev.localhost.
 3. PR `dev` -> `main`, merge. Prod pipeline does the same into
    `prod/kustomization.yaml`. ArgoCD syncs `portfolio-prod`.
@@ -158,6 +175,36 @@ To preview what ArgoCD will apply:
 kubectl kustomize infrastructure/kubernetes/dev | grep image:
 kubectl kustomize infrastructure/kubernetes/prod | grep image:
 ```
+
+---
+
+## Image scanning (Trivy)
+
+`.github/workflows/trivy.yml` runs on every PR and push to `dev` / `main`. It
+builds the image locally inside the runner (never pushed anywhere), scans it with
+Trivy, and does two things:
+
+1. **Uploads results as SARIF** to GitHub Security -> Code scanning. SARIF is the
+   standard JSON format for analysis findings; GitHub renders it as browsable,
+   tracked alerts instead of leaving them buried in workflow logs.
+2. **Fails the run on CRITICAL** vulnerabilities. HIGH findings are reported in
+   the Security tab but do not block. `ignore-unfixed: true` drops CVEs with no
+   available patch, so what surfaces is actionable.
+
+Requires `permissions: security-events: write` for the SARIF upload.
+
+**The action is pinned to a full commit SHA, not a version tag.** This is
+deliberate: `aquasecurity/trivy-action` was compromised in March 2026 when an
+attacker force-pushed version tags to serve an infostealer payload. Tags are
+mutable and can be repointed; a commit SHA cannot. Keep it SHA-pinned. To bump it
+later, resolve the new SHA explicitly:
+
+```bash
+gh api repos/aquasecurity/trivy-action/git/refs/tags/v0.36.0 --jq '.object.sha'
+```
+
+Fixing a CRITICAL finding usually means bumping the base image in
+`frontend/Dockerfile` (e.g. a newer `nginx:alpine`) and re-running.
 
 ---
 
@@ -281,6 +328,12 @@ This rebuilds only the load-balancer container; ArgoCD and workloads survive.
 3. Validate the file parses before committing: `node --check frontend/src/scripts.js`.
 4. Ship through the normal dev -> main flow.
 
+Note: the script code is stored inline in `scripts.js` rather than imported from
+the real files with Vite's `?raw`. That refactor was attempted and reverted: the
+Docker build context is `frontend/`, so files under `scripts/` at the repo root
+are not present in the image build and the import cannot resolve. Making `?raw`
+work would require moving the build context to the repo root.
+
 ---
 
 ## First-time setup on a fresh machine
@@ -378,6 +431,8 @@ From here ArgoCD owns the deployments; let Git drive.
 | `GEMINI_API_KEY` | AI PR reviewer |
 | `ADD_TO_PROJECT_PAT` | add issues to the Projects board |
 
+(Trivy needs no secret; it uses the built-in `GITHUB_TOKEN` for the SARIF upload.)
+
 ---
 
 ## Troubleshooting
@@ -395,6 +450,16 @@ After a cold start, `monitoring` may show `Progressing` briefly; give it a minut
 **Merged but new image isn't running**
 ArgoCD polls every ~3 min; REFRESH to force. Verify the live pod:
 `kubectl get pods` then `kubectl describe pod <new-pod> | grep Image:`.
+
+**Trivy check failed on a PR**
+A CRITICAL vulnerability was found. Open Security -> Code scanning to see it.
+Usually fixed by bumping the base image in `frontend/Dockerfile`. HIGH findings
+are reported but do not fail the build.
+
+**Trivy action fails with "unable to find version"**
+The tags moved to a `v` prefix (`v0.36.0`, not `0.36.0`). Resolve the SHA with
+`gh api repos/aquasecurity/trivy-action/git/refs/tags/v0.36.0 --jq '.object.sha'`
+and pin to that SHA.
 
 **AI reviewer didn't comment / posted an error note**
 A transient `HTTP 503` from Gemini is soft-failed by design. It reviews again on
@@ -424,6 +489,9 @@ conflict appears there, take the incoming side; the next pipeline run rewrites i
 **`kubectl` can't connect**
 Cluster isn't running: `k3d cluster start portfolio`.
 
+**`Vmmem` eating several GB after stopping everything**
+That is the WSL2 VM itself, not the cluster. Run `wsl --shutdown` from PowerShell.
+
 ---
 
 ## Key facts
@@ -445,11 +513,13 @@ Cluster isn't running: `k3d cluster start portfolio`.
 | ArgoCD UI | port-forward `svc/argocd-server -n argocd 8080:443` -> https://localhost:8080 |
 | Monitoring | `monitoring` namespace; Grafana port-forward `svc/monitoring-grafana -n monitoring 3000:80` (admin/admin) |
 | Terraform | `infrastructure/terraform/` (AWS EKS, validate-only) |
+| Image scanning | `.github/workflows/trivy.yml` (Trivy, SARIF to Security tab, fails on CRITICAL, SHA-pinned) |
 | AI reviewer | `.github/workflows/ai-review.yml` (Gemini, advisory) |
 | Project board | `github.com/users/Petar-Dev-Port/projects/1` |
 | Bootstrap script | `scripts/bash/up.sh` |
 | Scripts showcase | `frontend/src/scripts.js` (one entry per script) |
 | Secrets | `DOCKER_USERNAME`, `DOCKER_PASSWORD`, `GEMINI_API_KEY`, `ADD_TO_PROJECT_PAT` |
+| Free RAM after work | `wsl --shutdown` from PowerShell |
 
 ---
 
@@ -457,9 +527,8 @@ Cluster isn't running: `k3d cluster start portfolio`.
 
 - Switch services to ClusterIP (NodePorts are redundant with Ingress; note the
   tunnel currently relies on the prod NodePort, adjust together)
-- `scripts.js` `?raw` refactor (import real script files instead of inline strings)
-- Remove default Vite asset cruft (`frontend/src/assets/react.svg`)
-- Trivy image scanning in CI
 - Helm chart authoring for the app
 - ArgoCD webhook for instant sync (needs a stable public endpoint)
 - OIDC / keyless auth exploration
+- (Parked) `scripts.js` `?raw` refactor: needs the Docker build context moved to
+  the repo root, otherwise the imports cannot resolve in CI
