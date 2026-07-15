@@ -230,6 +230,21 @@ and `terraform destroy` to tear it down. The `.terraform.lock.hcl` is committed
 
 ---
 
+## Helm chart (packaging showcase)
+
+`charts/portfolio/` packages the app as a parameterized Helm chart (templated
+deployment, service, ingress + `values.yaml`). It is authored and validated, not
+wired into ArgoCD; the live deploy uses Kustomize. Validate it client-side:
+
+```bash
+helm lint charts/portfolio
+helm template test-release charts/portfolio
+```
+
+To actually install it (optional): `helm install portfolio charts/portfolio`.
+
+---
+
 ## AI PR reviewer
 
 `.github/workflows/ai-review.yml` runs on every PR (opened / new commits) into
@@ -520,6 +535,7 @@ That is the WSL2 VM itself, not the cluster. Run `wsl --shutdown` from PowerShel
 | Scripts showcase | `frontend/src/scripts.js` (one entry per script) |
 | Secrets | `DOCKER_USERNAME`, `DOCKER_PASSWORD`, `GEMINI_API_KEY`, `ADD_TO_PROJECT_PAT` |
 | Free RAM after work | `wsl --shutdown` from PowerShell |
+| Helm chart | `charts/portfolio/` (authored, lint + template validated) |
 
 ---
 
@@ -527,7 +543,6 @@ That is the WSL2 VM itself, not the cluster. Run `wsl --shutdown` from PowerShel
 
 - Switch services to ClusterIP (NodePorts are redundant with Ingress; note the
   tunnel currently relies on the prod NodePort, adjust together)
-- Helm chart authoring for the app
 - ArgoCD webhook for instant sync (needs a stable public endpoint)
 - OIDC / keyless auth exploration
 - (Parked) `scripts.js` `?raw` refactor: needs the Docker build context moved to
