@@ -44,6 +44,7 @@ flowchart LR
 | AI review | Gemini API |
 | Frontend | React + Vite, served by nginx |
 | Platform | WSL2 (Ubuntu) on Windows |
+| Packaging | Helm (chart authoring, lint + template validated) |
 
 ---
 
@@ -70,6 +71,7 @@ A branch guard ensures only `dev` can be merged into `main`, so production is al
 - **Issue to board automation:** new issues are auto-added to a GitHub Projects board with a clean label taxonomy.
 - **One-command bootstrap:** `scripts/bash/up.sh` starts Docker and the cluster, waits until pods are actually ready, and prints access URLs.
 - **Scripts showcase:** the site renders real automation scripts from a single source-of-truth file.
+- **Helm chart authoring:** the app is packaged as a parameterized Helm chart (templated manifests + values), validated with `helm lint` and `helm template`. Kustomize drives the live GitOps deploy; the chart demonstrates the packaging/templating approach.
 
 ---
 
@@ -77,6 +79,7 @@ A branch guard ensures only `dev` can be merged into `main`, so production is al
 
 ```
 .github/workflows/   CI/CD, AI review, Trivy scanning, branch guard, project automation
+charts/portfolio/    Helm chart for the app (packaging showcase)
 frontend/            React + Vite app (Dockerfile + nginx serve it)
 infrastructure/
   kubernetes/dev/    dev manifests (Kustomize base)
