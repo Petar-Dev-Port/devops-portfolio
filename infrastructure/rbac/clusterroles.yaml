@@ -1,0 +1,26 @@
+# Reusable permission templates (personas), cluster-wide definitions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: portfolio-viewer
+rules:
+  - apiGroups: ["", "apps"]
+    resources: ["pods", "services", "deployments", "replicasets", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: portfolio-developer
+rules:
+  - apiGroups: ["", "apps"]
+    resources: ["pods", "services", "deployments", "replicasets", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log", "pods/exec"]
+    verbs: ["get", "list", "create"]
+# Note: deliberately NO access to secrets-admin, RBAC objects, namespaces,
+# or nodes. Least privilege: a developer manages workloads, nothing more.
