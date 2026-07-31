@@ -8,4 +8,4 @@ resources:
 
 images:
   - name: petarpdev/devops-portfolio
-    newTag: dev-8cdb5da4c8221715765061e3929ca3c49506ddf2
+    newTag: dev-436369c7c7ef691c70410eaade7a63c5d5de1fe7
