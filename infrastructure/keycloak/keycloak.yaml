@@ -1,0 +1,129 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: iam
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: iam
+data:
+  portfolio-realm.json: |
+    {
+      "realm": "portfolio",
+      "enabled": true,
+      "groups": [
+        { "name": "developers" },
+        { "name": "viewers" }
+      ],
+      "users": [
+        {
+          "username": "alice",
+          "enabled": true,
+          "email": "alice@example.com",
+          "emailVerified": true,
+          "firstName": "Alice",
+          "lastName": "Dev",
+          "credentials": [{ "type": "password", "value": "alice-pass", "temporary": false }],
+          "groups": ["/developers"]
+        },
+        {
+          "username": "bob",
+          "enabled": true,
+          "email": "bob@example.com",
+          "emailVerified": true,
+          "firstName": "Bob",
+          "lastName": "View",
+          "credentials": [{ "type": "password", "value": "bob-pass", "temporary": false }],
+          "groups": ["/viewers"]
+        }
+      ],
+      "clients": [
+        {
+          "clientId": "kubernetes",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "kubernetes-secret",
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": true,
+          "redirectUris": ["http://localhost:8000", "http://127.0.0.1:8000"],
+          "webOrigins": ["*"],
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true",
+                "claim.name": "groups"
+              }
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: iam
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.0
+          args: ["start-dev", "--import-realm"]
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: admin
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              value: admin
+            - name: KEYCLOAK_ADMIN
+              value: admin
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              value: admin
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+      volumes:
+        - name: realm
+          configMap:
+            name: keycloak-realm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: iam
+spec:
+  selector:
+    app: keycloak
+  ports:
+    - port: 8080
+      targetPort: 8080
